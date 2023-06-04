@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "136669369123",
+    "project_id": "teolicenta-5a6be",
+    "storage_bucket": "teolicenta-5a6be.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:136669369123:android:da71dd7630abe6f2303296",
+        "android_client_info": {
+          "package_name": "org.licenta"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "136669369123-v4lk3mgbkhcjfa3517hvt0jt3b9on82j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQc89lYzSWKuXyLX5s9cRe39LVb6KwRkE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "136669369123-v4lk3mgbkhcjfa3517hvt0jt3b9on82j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
