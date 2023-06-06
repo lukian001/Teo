@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,29 +31,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import org.licenta.model.Led
+import org.licenta.statics.Authentication
 import org.licenta.statics.Database
 import org.licenta.ui.theme.TeoTheme
 
 class MainMenuActivity: ComponentActivity() {
     private lateinit var cardShown: MutableState<Boolean>
-    private lateinit var ledList: MutableList<Led>
+    private lateinit var ledList: MutableState<MutableList<Led>>
 
     private val dummyLedList = listOf(
-        Led("Fp9kbiL9Pw8yl6fDhKBk", "Led cu intensitate", "I000000001", 0, false),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 1, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 1, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 1, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 1, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true),
-        Led("oVFSceoAKQ48RdhYr8qY", "Led normal", "N000000001", 0, true)
+        Led("Led cu intensitate", "I000000001", 0, false),
+        Led("Led normal", "N000000001", 1, true),
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,13 +49,15 @@ class MainMenuActivity: ComponentActivity() {
         setContent {
             TeoTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    val context = LocalContext.current
+
                     cardShown = remember {
                         mutableStateOf(false)
                     }
                     ledList = remember {
-                        mutableListOf()
+                        mutableStateOf(mutableListOf())
                     }
-                    Database.readLeds(ledList)
+                    Database.setLedList(ledList)
                     Column {
                         Spacer(modifier = Modifier.height(20.dp))
                         Button(
@@ -92,6 +80,16 @@ class MainMenuActivity: ComponentActivity() {
                         }
 
                         LEDList(ledList)
+
+                        Spacer(modifier = Modifier.weight(1f))
+                        Button(
+                            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp),
+                            onClick = {
+                                Authentication.signOut(context)
+                            }
+                        ) {
+                            Text("Sign Out")
+                        }
                     }
                 }
             }
@@ -99,10 +97,10 @@ class MainMenuActivity: ComponentActivity() {
     }
 
     @Composable
-    fun LEDList(ledList: MutableList<Led>) {
-        LazyColumn{
-            items(dummyLedList) {
-                led -> Card (
+    fun LEDList(ledList: MutableState<MutableList<Led>>) {
+        Column{
+            for(led in ledList.value) {
+                Card (
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(end = 15.dp, start = 15.dp, top = 5.dp)
@@ -121,9 +119,9 @@ class MainMenuActivity: ComponentActivity() {
                                     modifier = Modifier.padding(5.dp),
                                     onClick = {
                                         if(led.value == 1) {
-                                            Database.changeLedValue(led.dbId, 0)
+                                            Database.changeLedValue(led, 0)
                                         } else {
-                                            Database.changeLedValue(led.dbId, 1)
+                                            Database.changeLedValue(led, 1)
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
@@ -140,7 +138,7 @@ class MainMenuActivity: ComponentActivity() {
                                 Button(
                                     modifier = Modifier.padding(5.dp),
                                     onClick = {
-
+                                        Database.changeLedValue(led, led.value - 10)
                                     },
                                     colors = ButtonDefaults.buttonColors(
                                         Color.Red
@@ -151,11 +149,13 @@ class MainMenuActivity: ComponentActivity() {
                                 }
                                 Button(
                                     modifier = Modifier.padding(5.dp),
-                                    onClick = { /*TODO*/ },
+                                    onClick = {
+                                        Database.changeLedValue(led, led.value + 10)
+                                    },
                                     colors = ButtonDefaults.buttonColors(
                                         Color.Green
                                     ),
-                                    enabled = led.value != 10
+                                    enabled = led.value != 100
                                 ) {
                                     Text("+")
                                 }

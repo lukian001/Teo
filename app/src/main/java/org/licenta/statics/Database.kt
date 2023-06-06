@@ -3,12 +3,23 @@ package org.licenta.statics
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import com.google.firebase.firestore.ktx.firestore
+import androidx.compose.runtime.MutableState
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ktx.database
+import com.google.firebase.database.ktx.getValue
 import com.google.firebase.ktx.Firebase
 import org.licenta.model.Led
 
 object Database {
-    private val database = Firebase.firestore
+    private lateinit var ledList: MutableState<MutableList<Led>>
+    private val database = Firebase.database("\n" +
+            "https://teolicenta-5a6be-default-rtdb.europe-west1.firebasedatabase.app/")
+
+    init {
+        readLeds()
+    }
 
     fun addLed(ledLabel: String, ledId: String, context: Context): Boolean {
         if(ledId.length != 10 || (!ledId.startsWith("I") && !ledId.startsWith("N"))) {
@@ -21,40 +32,50 @@ object Database {
             return false
         }
 
-        val led = hashMapOf(
-            "ledId" to ledId,
-            "lefLabel" to ledLabel,
-            "value" to 0,
-            "normal" to ledId.startsWith("N")
-        )
-
-        database.collection(Authentication.auth.currentUser!!.email!!).
-        add(led).addOnSuccessListener { documentReference ->
-            Log.d("TAG", "DocumentSnapshot added with ID: ${documentReference.id}")
-        }.addOnFailureListener { e ->
-            Log.w("TAG", "Error adding document", e)
-        }
+        val usrAcc = database.getReference(Authentication.auth.currentUser!!.uid)
+        usrAcc.child(ledId).setValue(Led(ledLabel, ledId, 0, ledId.startsWith("N")))
 
         return true
     }
 
-    fun readLeds(leadList: MutableList<Led>) {
-        database.collection(Authentication.auth.currentUser!!.email!!).whereNotEqualTo("lefLabel", "").addSnapshotListener { value, e ->
-            if (e != null) {
-                Log.w("TAG", "Listen failed.", e)
-                return@addSnapshotListener
+    private fun readLeds() {
+        database.getReference(Authentication.auth.currentUser!!.uid).addChildEventListener(object: ChildEventListener{
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
+                val led = snapshot.getValue<Led>()
+                ledList.value.add(led!!)
             }
 
-            for (doc in value!!) {
-                leadList.add(Led(doc.id, doc["lefLabel"].toString(), doc["ledId"].toString(), doc["value"].toString().toInt(), doc["normal"].toString().toBooleanStrict()))
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                val led = snapshot.getValue<Led>()
+                ledList.value.removeIf {
+                    it.id == led!!.id
+                }
+                ledList.value.add(led!!)
+                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
             }
-        }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.d("TAG", "onChildAdded:", error.toException())
+            }
+
+        })
     }
 
-    fun changeLedValue(dbId: String, i: Int) {
-        database.collection(Authentication.auth.currentUser!!.email!!) //
-                .document(dbId).update("value", i) //
-                .addOnSuccessListener { Log.d("TAG", "DocumentSnapshot successfully updated!") }
-                .addOnFailureListener { e -> Log.w("TAG", "Error updating document", e) }
+    fun setLedList(ledList: MutableState<MutableList<Led>>) {
+        this.ledList = ledList
+    }
+
+    fun changeLedValue(led: Led, i: Int) {
+        Log.i("Tag", "aici")
+        database.getReference(Authentication.auth.currentUser!!.uid).child(led.id).child("value").setValue(i)
     }
 }
