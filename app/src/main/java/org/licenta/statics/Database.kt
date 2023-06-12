@@ -9,17 +9,17 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ktx.database
 import com.google.firebase.database.ktx.getValue
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import org.licenta.model.Led
 
 object Database {
-    private lateinit var ledList: MutableState<MutableList<Led>>
-    private val database = Firebase.database("\n" +
-            "https://teolicenta-5a6be-default-rtdb.europe-west1.firebasedatabase.app/")
-
-    init {
-        readLeds()
-    }
+    private lateinit var listener: ListenerRegistration
+    private val databaseRealtime = Firebase.database(
+            "https://teolicenta-5a6be-default-rtdb.europe-west1.firebasedatabase.app/"
+    )
+    var ledList = mutableListOf<Led>()
 
     fun addLed(ledLabel: String, ledId: String, context: Context): Boolean {
         if(ledId.length != 10 || (!ledId.startsWith("I") && !ledId.startsWith("N"))) {
@@ -32,50 +32,57 @@ object Database {
             return false
         }
 
-        val usrAcc = database.getReference(Authentication.auth.currentUser!!.uid)
-        usrAcc.child(ledId).setValue(Led(ledLabel, ledId, 0, ledId.startsWith("N")))
+        val usrAcc = databaseRealtime.getReference(Authentication.auth.currentUser!!.uid)
+        val led = Led(ledLabel, ledId, 0, ledId.startsWith("N"))
+
+        Firebase.firestore.collection(Authentication.auth.currentUser!!.uid).document(ledId).set(
+            mutableMapOf(
+                "ledLabel" to led.ledLabel,
+                "ledId" to led.id,
+                "value" to led.value,
+                "normal" to led.normal
+            )
+        )
+        usrAcc.child(ledId).setValue(led)
 
         return true
     }
 
-    private fun readLeds() {
-        database.getReference(Authentication.auth.currentUser!!.uid).addChildEventListener(object: ChildEventListener{
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
-                val led = snapshot.getValue<Led>()
-                ledList.value.add(led!!)
-            }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                val led = snapshot.getValue<Led>()
-                ledList.value.removeIf {
-                    it.id == led!!.id
-                }
-                ledList.value.add(led!!)
-                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
-            }
-
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
-            }
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                Log.d("TAG", "onChildAdded:" + snapshot.key!!)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.d("TAG", "onChildAdded:", error.toException())
-            }
-
-        })
-    }
-
-    fun setLedList(ledList: MutableState<MutableList<Led>>) {
-        this.ledList = ledList
-    }
-
     fun changeLedValue(led: Led, i: Int) {
-        Log.i("Tag", "aici")
-        database.getReference(Authentication.auth.currentUser!!.uid).child(led.id).child("value").setValue(i)
+        databaseRealtime.getReference(Authentication.auth.currentUser!!.uid).child(led.id).child("value").setValue(i)
+        Firebase.firestore.collection(Authentication.auth.currentUser!!.uid).document(led.id).update("value", i)
+    }
+
+    fun startSnapshotForLeds() {
+        listener = Firebase.firestore.collection(Authentication.auth.uid!!).addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                Log.w("TAG", "Listen failed.", e)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && !snapshot.isEmpty) {
+                ledList = mutableListOf()
+
+                for (document in snapshot) {
+                    val led = Led(
+                        ledLabel = document.data["ledLabel"].toString(),
+                        id = document.data["ledId"].toString(),
+                        value = document.data["value"].toString().toInt(),
+                        normal = document.data["normal"].toString().toBooleanStrict()
+                    )
+
+                    ledList.add(led)
+                }
+            }
+        }
+    }
+
+    fun removeListener() {
+        listener.remove()
+    }
+
+    fun deleteLed(value: Led) {
+        databaseRealtime.getReference(Authentication.auth.currentUser!!.uid).child(value.id).removeValue()
+        Firebase.firestore.collection(Authentication.auth.currentUser!!.uid).document(value.id).delete()
     }
 }

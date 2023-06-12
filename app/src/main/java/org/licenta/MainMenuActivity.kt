@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import org.licenta.model.Led
@@ -37,12 +36,6 @@ import org.licenta.ui.theme.TeoTheme
 
 class MainMenuActivity: ComponentActivity() {
     private lateinit var cardShown: MutableState<Boolean>
-    private lateinit var ledList: MutableState<MutableList<Led>>
-
-    private val dummyLedList = listOf(
-        Led("Led cu intensitate", "I000000001", 0, false),
-        Led("Led normal", "N000000001", 1, true),
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,45 +44,57 @@ class MainMenuActivity: ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val context = LocalContext.current
 
-                    cardShown = remember {
+                    val ledOpen = remember {
                         mutableStateOf(false)
                     }
-                    ledList = remember {
-                        mutableStateOf(mutableListOf())
+
+                    val selectedLed = remember {
+                        mutableStateOf(Led())
                     }
-                    Database.setLedList(ledList)
-                    Column {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(end = 20.dp, bottom = 20.dp),
-                            onClick = {
-                                cardShown.value = !cardShown.value
+
+                    if(!ledOpen.value)  {
+                        cardShown = remember {
+                            mutableStateOf(false)
+                        }
+
+                        Column {
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Button(
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .padding(end = 20.dp, bottom = 20.dp),
+                                onClick = {
+                                    cardShown.value = !cardShown.value
+                                }
+                            ) {
+                                if(cardShown.value) {
+                                    Text("Close")
+                                } else {
+                                    Text("Add new LED")
+                                }
                             }
-                        ) {
+
                             if(cardShown.value) {
-                                Text("Close")
-                            } else {
-                                Text("Add new LED")
+                                LEDCard(cardShown)
+                            }
+
+                            LEDList(ledOpen, selectedLed)
+
+                            Spacer(modifier = Modifier.weight(1f))
+                            Button(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 10.dp, end = 10.dp),
+                                onClick = {
+                                    Authentication.signOut(context)
+                                }
+                            ) {
+                                Text("Sign Out")
                             }
                         }
-
-                        if(cardShown.value) {
-                            LEDCard(cardShown)
-                        }
-
-                        LEDList(ledList)
-
-                        Spacer(modifier = Modifier.weight(1f))
-                        Button(
-                            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp),
-                            onClick = {
-                                Authentication.signOut(context)
-                            }
-                        ) {
-                            Text("Sign Out")
-                        }
+                    } else {
+                        LedChanges(ledOpen, selectedLed)
                     }
                 }
             }
@@ -97,9 +102,108 @@ class MainMenuActivity: ComponentActivity() {
     }
 
     @Composable
-    fun LEDList(ledList: MutableState<MutableList<Led>>) {
+    private fun LedChanges(ledOpen: MutableState<Boolean>, selectedLed: MutableState<Led>) {
+        val ledValue = remember {
+            mutableStateOf(selectedLed.value.value)
+        }
+
+
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(selectedLed.value.id)
+                Text(selectedLed.value.ledLabel)
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (selectedLed.value.normal) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(start = 10.dp, end = 10.dp),
+                        onClick = {
+                            if(ledValue.value == 1) {
+                                Database.changeLedValue(selectedLed.value, 0)
+                                ledValue.value = 0
+                            } else {
+                                Database.changeLedValue(selectedLed.value, 1)
+                                ledValue.value = 1
+                            }
+                        }
+                    ) {
+                        if(ledValue.value == 1) {
+                            Text("Turn Off")
+                        } else {
+                            Text("Turn On")
+                        }
+                    }
+                } else {
+                    Button(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(start = 10.dp, end = 10.dp),
+                        onClick = {
+                            Database.changeLedValue(selectedLed.value, ledValue.value - 10)
+                            ledValue.value = ledValue.value - 10
+                        },
+                        enabled = ledValue.value >= 10
+                    ) {
+                        Text("Decrease")
+                    }
+                    Button(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(start = 10.dp, end = 10.dp),
+                        onClick = {
+                            Database.changeLedValue(selectedLed.value, ledValue.value + 10)
+                            ledValue.value = ledValue.value + 10
+                        },
+                        enabled = ledValue.value <= 90
+                    ) {
+                        Text("Increase")
+                    }
+                }
+            }
+
+
+            Spacer(
+                Modifier.weight(1f)
+            )
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp),
+                onClick = {
+                    Database.deleteLed(selectedLed.value)
+                    selectedLed.value = Led()
+                    ledOpen.value = false
+                }
+            ) {
+                Text("Delete LED")
+            }
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp),
+                onClick = {
+                    selectedLed.value = Led()
+                    ledOpen.value = false
+                }
+            ) {
+                Text("Back")
+            }
+        }
+    }
+
+    @Composable
+    fun LEDList(ledOpen: MutableState<Boolean>, selectedLed: MutableState<Led>) {
         Column{
-            for(led in ledList.value) {
+            for(led in Database.ledList) {
                 Card (
                     modifier = Modifier
                         .fillMaxWidth()
@@ -113,63 +217,18 @@ class MainMenuActivity: ComponentActivity() {
                             Text("Id: " + led.id)
                         }
                         Spacer(modifier = Modifier.weight(1f))
-                        Row{
-                            if(led.normal) {
-                                Button(
-                                    modifier = Modifier.padding(5.dp),
-                                    onClick = {
-                                        if(led.value == 1) {
-                                            Database.changeLedValue(led, 0)
-                                        } else {
-                                            Database.changeLedValue(led, 1)
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        getBttnColor(led.value)
-                                    )
-                                ) {
-                                    if(led.value == 1) {
-                                        Text("Turn off")
-                                    } else {
-                                        Text("Turn on")
-                                    }
-                                }
-                            } else {
-                                Button(
-                                    modifier = Modifier.padding(5.dp),
-                                    onClick = {
-                                        Database.changeLedValue(led, led.value - 10)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        Color.Red
-                                    ),
-                                    enabled = led.value != 0
-                                ) {
-                                    Text("-")
-                                }
-                                Button(
-                                    modifier = Modifier.padding(5.dp),
-                                    onClick = {
-                                        Database.changeLedValue(led, led.value + 10)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        Color.Green
-                                    ),
-                                    enabled = led.value != 100
-                                ) {
-                                    Text("+")
-                                }
-                            }
+                        Button(
+                            modifier = Modifier.padding(5.dp),
+                            onClick = {
+                            selectedLed.value = led
+                            ledOpen.value = true
+                        }) {
+                            Text("->")
                         }
                     }
                 }
             }
         }
-    }
-
-    fun getBttnColor(value: Int): Color {
-        if (value == 1) return Color.Red
-        return Color.Green
     }
 
     @OptIn(ExperimentalMaterial3Api::class)

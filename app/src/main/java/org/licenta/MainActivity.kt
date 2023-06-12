@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.licenta.statics.Authentication
+import org.licenta.statics.Database
 import org.licenta.ui.theme.TeoTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val context = LocalContext.current
                     if(Authentication.auth.currentUser != null) {
+                        Database.startSnapshotForLeds()
                         context.startActivity(Intent(context, MainMenuActivity::class.java))
                     }
 
