@@ -19,7 +19,7 @@ object Database {
     private val databaseRealtime = Firebase.database(
             "https://teolicenta-5a6be-default-rtdb.europe-west1.firebasedatabase.app/"
     )
-    var ledList = mutableListOf<Led>()
+    lateinit var ledList: MutableState<MutableList<Led>>
 
     fun addLed(ledLabel: String, ledId: String, context: Context): Boolean {
         if(ledId.length != 10 || (!ledId.startsWith("I") && !ledId.startsWith("N"))) {
@@ -61,7 +61,7 @@ object Database {
             }
 
             if (snapshot != null && !snapshot.isEmpty) {
-                ledList = mutableListOf()
+                ledList.value = mutableListOf()
 
                 for (document in snapshot) {
                     val led = Led(
@@ -71,7 +71,7 @@ object Database {
                         normal = document.data["normal"].toString().toBooleanStrict()
                     )
 
-                    ledList.add(led)
+                    ledList.value.add(led)
                 }
             }
         }

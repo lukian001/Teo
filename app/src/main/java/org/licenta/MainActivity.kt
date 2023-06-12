@@ -29,12 +29,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.licenta.model.Led
 import org.licenta.statics.Authentication
 import org.licenta.statics.Database
 import org.licenta.ui.theme.TeoTheme
 
 class MainActivity : ComponentActivity() {
-    lateinit var registerShown: MutableState<Boolean>
+    private lateinit var registerShown: MutableState<Boolean>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +43,12 @@ class MainActivity : ComponentActivity() {
             TeoTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val context = LocalContext.current
+                    val ledList = remember {
+                        mutableStateOf(mutableListOf<Led>())
+                    }
+
                     if(Authentication.auth.currentUser != null) {
+                        Database.ledList = ledList
                         Database.startSnapshotForLeds()
                         context.startActivity(Intent(context, MainMenuActivity::class.java))
                     }
@@ -50,9 +56,9 @@ class MainActivity : ComponentActivity() {
                     registerShown = remember { mutableStateOf(false) }
 
                     if(registerShown.value) {
-                        Register()
+                        Register(ledList)
                     } else {
-                        Login()
+                        Login(ledList)
                     }
                 }
             }
@@ -61,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun Register() {
+    fun Register(ledList: MutableState<MutableList<Led>>) {
         var email by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var confirmPassword by remember { mutableStateOf("") }
@@ -116,7 +122,7 @@ class MainActivity : ComponentActivity() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { Authentication.register(email, password, confirmPassword, context) },
+                onClick = { Authentication.register(email, password, confirmPassword, context, ledList) },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text("Register")
@@ -139,7 +145,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun Login() {
+    fun Login(ledList: MutableState<MutableList<Led>>) {
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         val context = LocalContext.current
@@ -183,7 +189,7 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = { Authentication.login(username, password, context) },
+                    onClick = { Authentication.login(username, password, context, ledList) },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text("Login")

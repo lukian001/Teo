@@ -107,7 +107,6 @@ class MainMenuActivity: ComponentActivity() {
             mutableStateOf(selectedLed.value.value)
         }
 
-
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -119,6 +118,7 @@ class MainMenuActivity: ComponentActivity() {
             ) {
                 Text(selectedLed.value.id)
                 Text(selectedLed.value.ledLabel)
+                Text(ledValue.value.toString())
             }
 
             Column(
@@ -170,7 +170,6 @@ class MainMenuActivity: ComponentActivity() {
                 }
             }
 
-
             Spacer(
                 Modifier.weight(1f)
             )
@@ -203,7 +202,7 @@ class MainMenuActivity: ComponentActivity() {
     @Composable
     fun LEDList(ledOpen: MutableState<Boolean>, selectedLed: MutableState<Led>) {
         Column{
-            for(led in Database.ledList) {
+            for(led in Database.ledList.value) {
                 Card (
                     modifier = Modifier
                         .fillMaxWidth()
