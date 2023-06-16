@@ -4,15 +4,12 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.MutableState
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ktx.database
-import com.google.firebase.database.ktx.getValue
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import org.licenta.model.Led
+import org.licenta.model.LedLocations
 
 object Database {
     private lateinit var listener: ListenerRegistration
@@ -21,7 +18,12 @@ object Database {
     )
     lateinit var ledList: MutableState<MutableList<Led>>
 
-    fun addLed(ledLabel: String, ledId: String, context: Context): Boolean {
+    fun addLed(
+        ledLabel: String,
+        ledId: String,
+        context: Context,
+        ledlbl: MutableState<LedLocations>
+    ): Boolean {
         if(ledId.length != 10 || (!ledId.startsWith("I") && !ledId.startsWith("N"))) {
             Toast.makeText(context, "LED ID is incorrect!", Toast.LENGTH_SHORT).show()
             return false
@@ -32,15 +34,21 @@ object Database {
             return false
         }
 
+        if(ledlbl.value == LedLocations.EMPTY) {
+            Toast.makeText(context, "You must select a label for your led!", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
         val usrAcc = databaseRealtime.getReference(Authentication.auth.currentUser!!.uid)
-        val led = Led(ledLabel, ledId, 0, ledId.startsWith("N"))
+        val led = Led(ledLabel, ledId, 0, ledId.startsWith("N"), ledlbl.value.displayName)
 
         Firebase.firestore.collection(Authentication.auth.currentUser!!.uid).document(ledId).set(
             mutableMapOf(
                 "ledLabel" to led.ledLabel,
                 "ledId" to led.id,
                 "value" to led.value,
-                "normal" to led.normal
+                "normal" to led.normal,
+                "loc" to led.loc
             )
         )
         usrAcc.child(ledId).setValue(led)
@@ -68,7 +76,8 @@ object Database {
                         ledLabel = document.data["ledLabel"].toString(),
                         id = document.data["ledId"].toString(),
                         value = document.data["value"].toString().toInt(),
-                        normal = document.data["normal"].toString().toBooleanStrict()
+                        normal = document.data["normal"].toString().toBooleanStrict(),
+                        loc = document.data["loc"].toString()
                     )
 
                     ledList.value.add(led)
